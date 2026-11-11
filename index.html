@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SHALOM EXPO QR 2026 | Lector</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#101010;color:#fff;font-family:Arial,sans-serif}
+    header{padding:22px 14px;text-align:center;border-bottom:5px solid #f5c400}
+    header h1{font-size:23px;margin:0}
+    header p{margin:8px 0 0;color:#f5c400}
+    main{max-width:620px;margin:22px auto;padding:12px}
+    .panel{background:#1d1d1d;border:1px solid #333;border-radius:16px;padding:20px}
+    .tag{display:inline-block;background:#f5c400;color:#111;padding:7px 11px;border-radius:20px;font-weight:bold;font-size:12px}
+    #lector{width:100%;margin-top:18px;overflow:hidden;border-radius:12px}
+    #lector video{width:100%!important;border-radius:12px}
+    button{width:100%;padding:15px;margin-top:13px;border:0;border-radius:9px;background:#f5c400;color:#111;font-size:16px;font-weight:bold}
+    button.secondary{background:#333;color:white}
+    button:disabled{opacity:.55}
+    #estado{margin-top:15px;padding:13px;border-radius:9px;background:#292929;line-height:1.45;overflow-wrap:anywhere}
+    .help{font-size:13px;color:#bbb;line-height:1.5}
+    footer{text-align:center;color:#aaa;padding:20px;font-size:12px}
+  </style>
+</head>
+<body>
+<header>
+  <h1>SHALOM EXPO QR 2026</h1>
+  <p>LECTOR QR · COLEGIO ADVENTISTA SHALOM</p>
+</header>
+<main>
+  <section class="panel">
+    <span class="tag" id="tipoMovimiento">PREPARANDO LECTOR</span>
+    <h2>Escaneo de participante</h2>
+    <p class="help">Pulsa ACTIVAR CÁMARA y concede el permiso solicitado por Chrome. Mantén el código QR dentro del recuadro.</p>
+    <button id="activar" type="button">ACTIVAR CÁMARA</button>
+    <button id="detener" class="secondary" type="button">DETENER CÁMARA</button>
+    <div id="lector"></div>
+    <div id="estado" role="status">Esperando que actives la cámara.</div>
+  </section>
+</main>
+<footer>COLEGIO ADVENTISTA SHALOM · 2026</footer>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const movement = (params.get('movement') || '').toUpperCase();
+  const stand = params.get('stand') || '';
+  const parentOrigin = params.get('parentOrigin') || '';
+  const session = params.get('session') || '';
+
+  const estado = document.getElementById('estado');
+  const activar = document.getElementById('activar');
+  const detener = document.getElementById('detener');
+  const tipoMovimiento = document.getElementById('tipoMovimiento');
+
+  let lector = null;
+  let escaneoEnviado = false;
+
+  function mensaje(texto, error) {
+    estado.textContent = texto;
+    estado.style.background = error ? '#5a2020' : '#292929';
+  }
+
+  tipoMovimiento.textContent = movement
+    ? (movement === 'VISITA' ? 'VISITA A STAND · ' + stand : movement)
+    : 'MOVIMIENTO NO DEFINIDO';
+
+  if (!window.isSecureContext || !navigator.mediaDevices) {
+    mensaje('Esta página necesita HTTPS para acceder a la cámara. Abre el enlace oficial de GitHub Pages.', true);
+    activar.disabled = true;
+  }
+
+  if (!window.opener || !parentOrigin || !session ||
+      !['INGRESO','SALIDA','VISITA'].includes(movement)) {
+    mensaje('No se detectó la aplicación principal. Cierra esta pestaña y vuelve a abrir el lector desde SHALOM EXPO QR.', true);
+    activar.disabled = true;
+  }
+
+  if (movement === 'VISITA' && !stand) {
+    mensaje('Falta el ID del stand. Cierra esta pestaña y vuelve a abrir el lector después de escribirlo.', true);
+    activar.disabled = true;
+  }
+
+  activar.addEventListener('click', iniciar);
+  detener.addEventListener('click', detenerCamara);
+
+  async function iniciar() {
+    if (lector) return;
+    if (typeof Html5Qrcode === 'undefined') {
+      mensaje('No se pudo cargar la biblioteca QR. Comprueba tu conexión a Internet.', true);
+      return;
+    }
+
+    activar.disabled = true;
+    mensaje('Solicitando permiso para utilizar la cámara...', false);
+
+    try {
+      const camaras = await Html5Qrcode.getCameras();
+      if (!camaras || !camaras.length) {
+        throw new Error('No se encontró ninguna cámara disponible.');
+      }
+
+      const preferida = camaras.find(c =>
+        /back|rear|environment|trasera|posterior/i.test(c.label)
+      ) || camaras[0];
+
+      lector = new Html5Qrcode('lector');
+
+      await lector.start(
+        preferida.id,
+        { fps:10, qrbox:{width:250,height:250}, aspectRatio:1 },
+        codigoLeido,
+        function() {}
+      );
+
+      mensaje('Cámara activada. Enfoca el código QR del participante.', false);
+    } catch (err) {
+      lector = null;
+      const nombre = err && err.name ? err.name + ': ' : '';
+      mensaje('No se pudo activar la cámara. ' + nombre + (err.message || String(err)) +
+        ' Revisa el permiso de cámara de Chrome para este sitio.', true);
+      activar.disabled = false;
+    }
+  }
+
+  async function codigoLeido(token) {
+    if (escaneoEnviado) return;
+    escaneoEnviado = true;
+    activar.disabled = true;
+    mensaje('QR leído. Enviando el código a SHALOM EXPO...', false);
+
+    try {
+      if (lector) {
+        await lector.stop();
+        await lector.clear();
+        lector = null;
+      }
+
+      if (!window.opener || window.opener.closed) {
+        throw new Error('La pestaña principal se cerró. Vuelve a abrir el lector desde el sistema.');
+      }
+
+      window.opener.postMessage({
+        type:'SHALOM_QR_SCANNED',
+        token:String(token).trim(),
+        movement:movement,
+        stand:stand,
+        session:session
+      }, parentOrigin);
+
+      mensaje('Código enviado. Esperando confirmación del sistema...', false);
+    } catch (err) {
+      escaneoEnviado = false;
+      mensaje('No se pudo enviar el QR: ' + (err.message || err), true);
+      activar.disabled = false;
+    }
+  }
+
+  window.addEventListener('message', function(event) {
+    if (event.origin !== parentOrigin) return;
+    if (event.source !== window.opener) return;
+    const data = event.data || {};
+    if (data.type !== 'SHALOM_QR_RESULT' || data.session !== session) return;
+
+    mensaje(data.message || (data.ok ? 'Registro completado.' : 'No se pudo registrar.'), !data.ok);
+    if (data.ok) {
+      // Evita un segundo escaneo accidental; el operador puede cerrar esta pestaña.
+      detener.disabled = false;
+    } else {
+      escaneoEnviado = false;
+      activar.disabled = false;
+    }
+  });
+
+  async function detenerCamara() {
+    try {
+      if (lector) {
+        await lector.stop();
+        await lector.clear();
+        lector = null;
+      }
+      mensaje('Cámara detenida.', false);
+    } catch (err) {
+      mensaje('No se pudo detener la cámara: ' + (err.message || err), true);
+    }
+    activar.disabled = false;
+  }
+
+  window.addEventListener('beforeunload', function() {
+    if (lector) {
+      try { lector.stop(); } catch(e) {}
+    }
+  });
+</script>
+</body>
+</html>
