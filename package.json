@@ -1,0 +1,22 @@
+{
+  "name": "shalom-expo-2026",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.3.6"
+  },
+  "dependencies": {
+    "firebase": "^13.2.0",
+    "html5-qrcode": "^2.3.8",
+    "jspdf": "^4.2.1",
+    "qrcode": "^1.5.4",
+    "vite-plugin-pwa": "^2.0.0",
+    "xlsx": "^0.18.5"
+  }
+}

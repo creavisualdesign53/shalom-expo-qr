@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="110" fill="#7138a8"/>
+  <circle cx="256" cy="220" r="145" fill="#ffffff" opacity=".12"/>
+  <path d="M256 75 385 150v150l-129 75-129-75V150z" fill="none" stroke="#ffffff" stroke-width="15" stroke-linejoin="round"/>
+  <path d="M180 270V175h35l41 55 41-55h35v95h-35v-43l-41 52-41-52v43z" fill="#ffffff"/>
+  <path d="M170 325h172" stroke="#f28b35" stroke-width="17" stroke-linecap="round"/>
+  <text x="256" y="405" text-anchor="middle" font-family="Arial" font-size="42" font-weight="bold" fill="#ffffff">SHALOM</text>
+</svg>
