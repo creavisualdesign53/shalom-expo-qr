@@ -6,6 +6,14 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+
+      workbox: {
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true
+      },
+
       manifest: {
         name: 'SHALOM EXPO 2026',
         short_name: 'SHALOM EXPO',

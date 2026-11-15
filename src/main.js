@@ -648,6 +648,12 @@ function mostrarPanel(nombre) {
             <span class="menu-icono">♧</span>
             <span>Visitas</span>
           </button>
+ ${rolUsuario === 'administrador' ? `
+  <button data-vista="control-staff">
+    <span class="menu-icono">♙</span>
+    <span>Control de STAFF</span>
+  </button>
+` : ''}         
 <button data-vista="evaluacion">
   <span class="menu-icono">☆</span>
   <span>Evaluación</span>
@@ -866,6 +872,16 @@ function mostrarPanel(nombre) {
   </span>
   <b>→</b>
 </button>
+${rolUsuario === 'administrador' ? `
+<button class="dashboard-acceso" id="inicio-ir-staff">
+  <span class="dashboard-acceso-icono morado">♙</span>
+  <span>
+    <strong>Control de STAFF</strong>
+    <small>Personal registrado y actividad de escaneo</small>
+  </span>
+  <b>→</b>
+</button>
+` : ''}
             <button class="dashboard-acceso" id="inicio-ir-evaluacion">
               <span class="dashboard-acceso-icono morado">☆</span>
               <span>
@@ -997,6 +1013,9 @@ function mostrarPanel(nombre) {
   abrirVista('sta', mostrarProyectos);
   abrirVista('visitas', mostrarVisitas);
   abrirVista('jurados', mostrarJuradosRegistrados);
+  if (rolUsuario === 'administrador') {
+  abrirVista('control-staff', mostrarControlStaff);
+}
   abrirVista('cie', mostrarCIE);
   abrirVista('evaluacion', mostrarEvaluacion);
 
@@ -1014,6 +1033,7 @@ function mostrarPanel(nombre) {
   'inicio-ir-proyectos': 'sta',
   'inicio-ir-visitas': 'visitas',
   'inicio-ir-jurados': 'jurados',
+  'inicio-ir-staff': 'control-staff',
   'inicio-ir-evaluacion': 'evaluacion',
   'inicio-ir-cie': 'cie',
   'inicio-ir-usuarios': 'usuarios'
@@ -1031,6 +1051,531 @@ function mostrarPanel(nombre) {
       });
     }
   });
+}
+
+
+async function mostrarControlStaff() {
+  const contenido = document.querySelector('#contenido');
+
+  if (administrador?.rol !== 'administrador') {
+    contenido.innerHTML = '<h2>Acceso restringido</h2>';
+    return;
+  }
+
+  contenido.innerHTML = `
+    <section class="control-staff">
+
+      <header class="control-staff-header">
+        <div>
+          <span class="control-staff-etiqueta">GESTIÓN INSTITUCIONAL</span>
+          <h2>Control de STAFF</h2>
+          <p>Administración del personal y seguimiento de actividad</p>
+        </div>
+        <div class="control-staff-emblema">♙</div>
+      </header>
+
+      <div class="control-staff-resumen">
+        <article class="control-staff-card">
+          <span>PERSONAL REGISTRADO</span>
+          <strong id="staff-total">—</strong>
+          <small>Personas inscritas</small>
+        </article>
+
+        <article class="control-staff-card">
+          <span>ASISTENCIAS</span>
+          <strong id="staff-asistencias">—</strong>
+          <small>Escaneos realizados</small>
+        </article>
+
+        <article class="control-staff-card">
+          <span>VISITAS A STANDS</span>
+          <strong id="staff-visitas">—</strong>
+          <small>Proyectos visitados</small>
+        </article>
+
+        <article class="control-staff-card">
+          <span>ACTIVIDAD TOTAL</span>
+          <strong id="staff-actividad">—</strong>
+          <small>Actividad registrada</small>
+        </article>
+      </div>
+
+      <div class="control-staff-panel">
+        <div class="control-staff-panel-titulo">
+          <div>
+            <h3>Personal registrado</h3>
+            <p>Consulta y administra cada integrante del equipo.</p>
+          </div>
+
+          <button id="staff-limpiar-todo" class="staff-btn-eliminar-todo">
+            Eliminar todo
+          </button>
+        </div>
+
+        <div class="control-staff-tabla">
+          <table>
+            <thead>
+              <tr>
+                <th>PERSONAL STAFF</th>
+                <th>ASISTENCIAS</th>
+                <th>VISITAS</th>
+                <th>ACTIVIDAD</th>
+                <th>ESTADO</th>
+                <th>ACCIÓN</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-control-staff">
+              <tr><td colspan="6">Cargando información...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="control-staff-pie">
+        SHALOM EXPO 2026 · CONTROL ADMINISTRATIVO
+      </p>
+
+    </section>
+  `;
+
+  // Diseño
+  if (!document.querySelector('#estilos-control-staff')) {
+    const estilos = document.createElement('style');
+    estilos.id = 'estilos-control-staff';
+
+    estilos.textContent = `
+      .control-staff {
+        width:100%;
+        color:#382052;
+      }
+
+      .control-staff-header {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:20px;
+        padding:28px;
+        border-radius:20px;
+        background:linear-gradient(120deg,#382052,#7045a5);
+        color:white;
+        margin-bottom:22px;
+      }
+
+      .control-staff-etiqueta {
+        font-size:11px;
+        letter-spacing:2px;
+        color:#e4cfff;
+        font-weight:800;
+      }
+
+      .control-staff-header h2 {
+        font-size:28px;
+        margin:9px 0;
+      }
+
+      .control-staff-header p {
+        margin:0;
+        color:#eee4fa;
+      }
+
+      .control-staff-emblema {
+        width:65px;
+        height:65px;
+        border-radius:18px;
+        display:grid;
+        place-items:center;
+        background:#ffffff20;
+        font-size:35px;
+      }
+
+      .control-staff-resumen {
+        display:grid;
+        grid-template-columns:repeat(4,minmax(0,1fr));
+        gap:15px;
+        margin-bottom:24px;
+      }
+
+      .control-staff-card {
+        background:white;
+        padding:22px;
+        border-radius:16px;
+        border:1px solid #eadff4;
+        box-shadow:0 5px 18px #3820520b;
+      }
+
+      .control-staff-card span {
+        display:block;
+        font-size:10px;
+        font-weight:800;
+        letter-spacing:.7px;
+        color:#806b96;
+      }
+
+      .control-staff-card strong {
+        display:block;
+        font-size:32px;
+        margin:10px 0 4px;
+        color:#7045a5;
+      }
+
+      .control-staff-card small {
+        color:#887d93;
+      }
+
+      .control-staff-panel {
+        background:white;
+        padding:24px;
+        border:1px solid #eadff4;
+        border-radius:18px;
+        box-shadow:0 5px 18px #3820520b;
+      }
+
+      .control-staff-panel-titulo {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:15px;
+        margin-bottom:20px;
+      }
+
+      .control-staff-panel-titulo h3 {
+        margin:0 0 6px;
+        color:#382052;
+      }
+
+      .control-staff-panel-titulo p {
+        margin:0;
+        color:#82758e;
+        font-size:13px;
+      }
+
+      .control-staff-tabla {
+        width:100%;
+        overflow-x:auto;
+      }
+
+      .control-staff-tabla table {
+        width:100%;
+        border-collapse:collapse;
+        min-width:760px;
+      }
+
+      .control-staff-tabla th {
+        padding:14px 12px;
+        background:#f5effb;
+        color:#65418b;
+        font-size:11px;
+        text-align:left;
+      }
+
+      .control-staff-tabla td {
+        padding:15px 12px;
+        border-bottom:1px solid #eee8f4;
+        font-size:13px;
+      }
+
+      .staff-estado {
+        padding:6px 11px;
+        border-radius:30px;
+        background:#e8f8ee;
+        color:#21834c;
+        font-size:11px;
+        font-weight:800;
+      }
+
+      .staff-estado.inactivo {
+        background:#fcebed;
+        color:#bd3445;
+      }
+
+      .staff-btn-eliminar {
+        padding:8px 12px;
+        border:0;
+        border-radius:8px;
+        background:#fff0f0;
+        color:#c62828;
+        font-weight:800;
+        cursor:pointer;
+      }
+
+      .staff-btn-eliminar-todo {
+        padding:11px 16px;
+        border:0;
+        border-radius:10px;
+        background:#c62828;
+        color:white;
+        font-weight:800;
+        cursor:pointer;
+      }
+
+      .staff-btn-eliminar:disabled,
+      .staff-btn-eliminar-todo:disabled {
+        opacity:.5;
+        cursor:not-allowed;
+      }
+
+      .control-staff-pie {
+        text-align:center;
+        margin-top:22px;
+        color:#94869f;
+        font-size:11px;
+        letter-spacing:1px;
+      }
+
+      @media(max-width:850px) {
+        .control-staff-resumen {
+          grid-template-columns:repeat(2,minmax(0,1fr));
+        }
+      }
+
+      @media(max-width:520px) {
+        .control-staff-header {
+          padding:20px;
+        }
+
+        .control-staff-header h2 {
+          font-size:22px;
+        }
+
+        .control-staff-emblema {
+          width:48px;
+          height:48px;
+          font-size:26px;
+        }
+
+        .control-staff-panel {
+          padding:15px;
+        }
+
+        .control-staff-panel-titulo {
+          align-items:flex-start;
+          flex-direction:column;
+        }
+
+        .staff-btn-eliminar-todo {
+          width:100%;
+        }
+      }
+    `;
+
+    document.head.appendChild(estilos);
+  }
+
+  const tabla = document.querySelector('#tabla-control-staff');
+  const botonLimpiar = document.querySelector('#staff-limpiar-todo');
+
+  // Elimina documentos en lotes seguros de máximo 450 operaciones.
+  async function eliminarDocumentos(referencias) {
+    for (let inicio = 0; inicio < referencias.length; inicio += 450) {
+      const lote = writeBatch(db);
+
+      referencias.slice(inicio, inicio + 450).forEach(referencia => {
+        lote.delete(referencia);
+      });
+
+      await lote.commit();
+    }
+  }
+
+  async function cargarDatos() {
+    const [staffSnap, asistenciasSnap, visitasSnap] =
+      await Promise.all([
+        getDocs(collection(db, 'staff')),
+        getDocs(collection(db, 'asistencias')),
+        getDocs(collection(db, 'visitas_proyectos'))
+      ]);
+
+    const personal = {};
+
+    staffSnap.forEach(documento => {
+      const datos = documento.data();
+
+      personal[documento.id] = {
+        uid: documento.id,
+        nombre: datos.nombreCompleto || 'Sin nombre',
+        activo: datos.activo === true,
+        asistencias: 0,
+        visitas: 0
+      };
+    });
+
+    asistenciasSnap.forEach(documento => {
+      const datos = documento.data();
+
+      if (datos.staff_uid && personal[datos.staff_uid]) {
+        personal[datos.staff_uid].asistencias++;
+      }
+    });
+
+    visitasSnap.forEach(documento => {
+      const datos = documento.data();
+
+      if (datos.staff_uid && personal[datos.staff_uid]) {
+        personal[datos.staff_uid].visitas++;
+      }
+    });
+
+    const lista = Object.values(personal).sort((a, b) =>
+      (b.asistencias + b.visitas) -
+      (a.asistencias + a.visitas)
+    );
+
+    const totalAsistencias = lista.reduce(
+      (suma, persona) => suma + persona.asistencias, 0
+    );
+
+    const totalVisitas = lista.reduce(
+      (suma, persona) => suma + persona.visitas, 0
+    );
+
+    document.querySelector('#staff-total').textContent = lista.length;
+    document.querySelector('#staff-asistencias').textContent = totalAsistencias;
+    document.querySelector('#staff-visitas').textContent = totalVisitas;
+    document.querySelector('#staff-actividad').textContent =
+      totalAsistencias + totalVisitas;
+
+    tabla.innerHTML = lista.length
+      ? lista.map(persona => `
+          <tr>
+            <td><strong>${escapar(persona.nombre)}</strong></td>
+            <td>${persona.asistencias}</td>
+            <td>${persona.visitas}</td>
+            <td><strong>${persona.asistencias + persona.visitas}</strong></td>
+            <td>
+              <span class="staff-estado ${persona.activo ? '' : 'inactivo'}">
+                ${persona.activo ? 'ACTIVO' : 'INACTIVO'}
+              </span>
+            </td>
+            <td>
+              <button
+                class="staff-btn-eliminar"
+                data-eliminar-staff="${escapar(persona.uid)}">
+                Eliminar
+              </button>
+            </td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="6">No hay personal STAFF registrado.</td></tr>';
+
+    return { staffSnap, asistenciasSnap, visitasSnap };
+  }
+
+  // Eliminación individual
+  tabla.addEventListener('click', async evento => {
+    const boton = evento.target.closest('[data-eliminar-staff]');
+    if (!boton) return;
+
+    const uid = boton.dataset.eliminarStaff;
+    const persona = boton.closest('tr')?.querySelector('td strong')?.textContent || 'este STAFF';
+
+    if (!confirm(
+      `¿Eliminar permanentemente a ${persona}?\n\n` +
+      'También se borrarán todas sus asistencias y visitas a stands.\n\n' +
+      'Esta acción no se puede deshacer.'
+    )) return;
+
+    boton.disabled = true;
+    boton.textContent = 'Eliminando...';
+
+    try {
+      const [asistenciasSnap, visitasSnap] = await Promise.all([
+        getDocs(query(
+          collection(db, 'asistencias'),
+          where('staff_uid', '==', uid)
+        )),
+        getDocs(query(
+          collection(db, 'visitas_proyectos'),
+          where('staff_uid', '==', uid)
+        ))
+      ]);
+
+      const referencias = [
+        doc(db, 'staff', uid),
+        ...asistenciasSnap.docs.map(d => d.ref),
+        ...visitasSnap.docs.map(d => d.ref)
+      ];
+
+      await eliminarDocumentos(referencias);
+
+      alert('STAFF y sus registros asociados fueron eliminados permanentemente.');
+      await cargarDatos();
+
+    } catch (error) {
+      console.error('Error eliminando STAFF:', error);
+      alert('No se pudo completar la eliminación: ' + error.message);
+      boton.disabled = false;
+      boton.textContent = 'Eliminar';
+    }
+  });
+
+  // Limpieza total
+  botonLimpiar.addEventListener('click', async () => {
+    try {
+      const [staffSnap, asistenciasSnap, visitasSnap] =
+        await Promise.all([
+          getDocs(collection(db, 'staff')),
+          getDocs(collection(db, 'asistencias')),
+          getDocs(collection(db, 'visitas_proyectos'))
+        ]);
+
+      if (staffSnap.empty) {
+        alert('No hay personal STAFF registrado para eliminar.');
+        return;
+      }
+
+      const confirmacion = confirm(
+        `ATENCIÓN: ELIMINACIÓN PERMANENTE\n\n` +
+        `STAFF registrados: ${staffSnap.size}\n` +
+        `Asistencias vinculadas: ${asistenciasSnap.docs.filter(d => staffSnap.docs.some(s => s.id === d.data().staff_uid)).length}\n` +
+        `Visitas vinculadas: ${visitasSnap.docs.filter(d => staffSnap.docs.some(s => s.id === d.data().staff_uid)).length}\n\n` +
+        'Se eliminarán los STAFF y únicamente sus asistencias y visitas vinculadas.\n' +
+        'Las asistencias de otros usuarios no se modificarán.\n\n' +
+        '¿Deseas continuar?'
+      );
+
+      if (!confirmacion) return;
+
+      const uids = new Set(staffSnap.docs.map(d => d.id));
+
+      const referencias = [
+        ...staffSnap.docs.map(d => d.ref),
+        ...asistenciasSnap.docs
+          .filter(d => uids.has(d.data().staff_uid))
+          .map(d => d.ref),
+        ...visitasSnap.docs
+          .filter(d => uids.has(d.data().staff_uid))
+          .map(d => d.ref)
+      ];
+
+      botonLimpiar.disabled = true;
+      botonLimpiar.textContent = 'Eliminando registros...';
+
+      await eliminarDocumentos(referencias);
+
+      alert('Se eliminaron permanentemente los STAFF y sus registros asociados.');
+
+      await cargarDatos();
+
+    } catch (error) {
+      console.error('Error limpiando STAFF:', error);
+      alert('No se pudo completar la limpieza: ' + error.message);
+    } finally {
+      botonLimpiar.disabled = false;
+      botonLimpiar.textContent = 'Eliminar todo';
+    }
+  });
+
+  try {
+    await cargarDatos();
+  } catch (error) {
+    console.error('Error al cargar Control STAFF:', error);
+
+    tabla.innerHTML = `
+      <tr>
+        <td colspan="6">Error al cargar los registros: ${escapar(error.message)}</td>
+      </tr>
+    `;
+  }
 }
 
 // ==========================================
@@ -3284,7 +3829,7 @@ async function mostrarEvaluacion(proyecto = null) {
         </div>
       </header>
 
-      <section class="eval-tarjeta" style="display:${proyecto ? 'none' : 'block'};">
+<section class="eval-tarjeta ${proyecto ? 'eval-oculto-qr' : ''}">
         <h3>1. Datos de la evaluación</h3>
 
         <div class="eval-grid">
@@ -3347,7 +3892,7 @@ async function mostrarEvaluacion(proyecto = null) {
         </div>
       </section>
 
-      <section class="eval-tarjeta" style="display:${proyecto ? 'none' : 'block'};">
+<section class="eval-tarjeta ${proyecto ? 'eval-oculto-qr' : ''}">
         <div class="eval-titulo-seccion">
           <div>
             <h3>2. Selección de estudiantes</h3>
@@ -3525,32 +4070,96 @@ async function mostrarEvaluacion(proyecto = null) {
 
 try {
   await cargarEstudiantesEvaluacion();
-// CARGAR DATOS DEL PROYECTO CUANDO SE INGRESA POR QR
-if (proyecto) {
 
-  document.querySelector('#eval-area').value =
-    proyecto.area || '';
+  // CARGAR AUTOMÁTICAMENTE LOS DATOS DEL PROYECTO POR QR
+  if (proyecto) {
 
-  document.querySelector('#eval-tema').value =
-    proyecto.nombre || '';
+    document.querySelector('#eval-area').value =
+      proyecto.area || '';
 
-  const idsEstudiantesProyecto = (proyecto.estudiantes || [])
-    .map(estudiante => estudiante.id);
+    document.querySelector('#eval-tema').value =
+      proyecto.nombre || '';
 
-  seleccionEvaluacion = estudiantesEvaluacion.filter(
-    estudiante => idsEstudiantesProyecto.includes(estudiante.id)
-  );
+    // Obtener las referencias de los estudiantes del proyecto
+    const integrantesProyecto = Array.isArray(proyecto.estudiantes)
+      ? proyecto.estudiantes
+      : [];
 
-  document.querySelector('#eval-tipo').value =
-    seleccionEvaluacion.length > 1 ? 'Grupal' : 'Personal';
+    const normalizarNombre = valor =>
+      String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
 
-  const botonConfirmarProyecto =
-    document.querySelector('#eval-confirmar-grupo');
+    const idsProyecto = new Set();
+    const codigosProyecto = new Set();
+    const nombresProyecto = new Set();
 
-  botonConfirmarProyecto.disabled = true;
-  botonConfirmarProyecto.textContent =
-    'GRUPO DEL PROYECTO CONFIRMADO';
-}
+    integrantesProyecto.forEach(estudiante => {
+
+      if (typeof estudiante === 'string') {
+        idsProyecto.add(estudiante.trim());
+        return;
+      }
+
+      if (!estudiante) return;
+
+      [
+        estudiante.id,
+        estudiante.estudianteId,
+        estudiante.estudiante_id,
+        estudiante.uid
+      ].filter(Boolean).forEach(id => {
+        idsProyecto.add(String(id).trim());
+      });
+
+      [
+        estudiante.codigo,
+        estudiante.qr_id
+      ].filter(Boolean).forEach(codigo => {
+        codigosProyecto.add(String(codigo).trim());
+      });
+
+      const nombre = estudiante.nombre ||
+        estudiante.nombreCompleto ||
+        `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+
+      if (nombre) {
+        nombresProyecto.add(normalizarNombre(nombre));
+      }
+    });
+
+    // Identificar automáticamente a los integrantes
+    seleccionEvaluacion = estudiantesEvaluacion.filter(estudiante => {
+
+      const coincideId = idsProyecto.has(String(estudiante.id || '').trim());
+
+      const coincideCodigo =
+        codigosProyecto.has(String(estudiante.codigo || '').trim()) ||
+        codigosProyecto.has(String(estudiante.qr_id || '').trim());
+
+      const nombreCompleto =
+        `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+
+      const coincideNombre =
+        nombresProyecto.has(normalizarNombre(nombreCompleto)) ||
+        nombresProyecto.has(normalizarNombre(estudiante.nombreCompleto));
+
+      return coincideId || coincideCodigo || coincideNombre;
+    });
+
+    document.querySelector('#eval-tipo').value =
+      seleccionEvaluacion.length > 1 ? 'Grupal' : 'Personal';
+
+    const botonConfirmarProyecto =
+      document.querySelector('#eval-confirmar-grupo');
+
+    botonConfirmarProyecto.disabled = true;
+    botonConfirmarProyecto.textContent =
+      'GRUPO DEL PROYECTO CONFIRMADO';
+  }
+
   // MODO INDIVIDUAL
   document.querySelector('#eval-qr-individual')
     .addEventListener('click', () => {
@@ -5220,38 +5829,85 @@ if (correcciones.length > 0) {
 async function cargarOpcionesCredenciales() {
   try {
     const resultado = await getDocs(collection(db, 'estudiantes'))
+    const niveles = new Set()
 
+    resultado.docs.forEach(documento => {
+      const estudiante = documento.data()
+      if (estudiante.nivel) niveles.add(estudiante.nivel.trim())
+    })
+
+    const selectorNivel = document.querySelector('#filtro-nivel-credenciales')
+    const selectorCurso = document.querySelector('#filtro-curso')
+    const selectorParalelo = document.querySelector('#filtro-paralelo')
+
+    selectorNivel.innerHTML = '<option value="">Seleccionar nivel</option>'
+    selectorCurso.innerHTML = '<option value="">Primero selecciona un nivel</option>'
+    selectorParalelo.innerHTML = '<option value="">Seleccionar paralelo</option>'
+
+    selectorCurso.disabled = true
+    selectorParalelo.disabled = true
+
+    Array.from(niveles)
+      .sort((a, b) => a.localeCompare(b, 'es'))
+      .forEach(nivel => {
+        const opcion = document.createElement('option')
+        opcion.value = nivel
+        opcion.textContent = nivel
+        selectorNivel.appendChild(opcion)
+      })
+
+  } catch (error) {
+    console.error('Error al cargar niveles:', error)
+    alert('No se pudieron cargar los niveles.')
+  }
+}
+
+async function cargarCursosCredenciales() {
+  try {
+    const selectorNivel = document.querySelector('#filtro-nivel-credenciales')
+    const selectorCurso = document.querySelector('#filtro-curso')
+    const selectorParalelo = document.querySelector('#filtro-paralelo')
+
+    selectorCurso.innerHTML = '<option value="">Seleccionar curso</option>'
+    selectorParalelo.innerHTML = '<option value="">Seleccionar paralelo</option>'
+    selectorParalelo.disabled = true
+
+    if (!selectorNivel.value) {
+      selectorCurso.disabled = true
+      return
+    }
+
+    selectorCurso.disabled = false
+
+    const resultado = await getDocs(collection(db, 'estudiantes'))
     const cursos = new Map()
 
     resultado.docs.forEach(documento => {
       const estudiante = documento.data()
 
-      if (!estudiante.nivel || !estudiante.curso) return
+      if (
+        estudiante.nivel?.trim() !== selectorNivel.value ||
+        !estudiante.curso
+      ) return
 
-      const nivel = estudiante.nivel.trim()
       const curso = estudiante.curso.trim()
-      const clave = JSON.stringify({ nivel, curso })
+      const clave = JSON.stringify({
+        nivel: selectorNivel.value,
+        curso
+      })
 
-      cursos.set(clave, { nivel, curso })
+      cursos.set(clave, { nivel: selectorNivel.value, curso })
     })
-
-    const selector = document.querySelector('#filtro-curso')
-
-    selector.innerHTML = '<option value="">Seleccionar curso</option>'
 
     Array.from(cursos.entries())
       .sort((a, b) =>
-        `${a[1].nivel} ${a[1].curso}`.localeCompare(
-          `${b[1].nivel} ${b[1].curso}`,
-          'es',
-          { numeric: true }
-        )
+        a[1].curso.localeCompare(b[1].curso, 'es', { numeric: true })
       )
       .forEach(([clave, datos]) => {
         const opcion = document.createElement('option')
         opcion.value = clave
-        opcion.textContent = `${datos.nivel} - ${datos.curso}`
-        selector.appendChild(opcion)
+        opcion.textContent = datos.curso
+        selectorCurso.appendChild(opcion)
       })
 
   } catch (error) {
@@ -5266,14 +5922,17 @@ async function cargarParalelosCredenciales() {
     const selectorParalelo = document.querySelector('#filtro-paralelo')
 
     selectorParalelo.innerHTML =
-      '<option value="">Seleccionar paralelo</option>'
+      '<option value="">Todos los paralelos</option>'
 
-    if (!selectorCurso.value) return
+    if (!selectorCurso.value) {
+      selectorParalelo.disabled = true
+      return
+    }
+
+    selectorParalelo.disabled = false
 
     const seleccionado = JSON.parse(selectorCurso.value)
-
     const resultado = await getDocs(collection(db, 'estudiantes'))
-
     const paralelos = new Set()
 
     resultado.docs.forEach(documento => {
@@ -5304,17 +5963,17 @@ async function cargarParalelosCredenciales() {
 }
 
 async function generarCredencialesGrupo() {
+  const nivel = document.querySelector('#filtro-nivel-credenciales').value
   const cursoSeleccionado = document.querySelector('#filtro-curso').value
   const paraleloSeleccionado = document.querySelector('#filtro-paralelo').value
-  const mensaje = document.querySelector('#mensaje-credenciales')
 
-  if (!cursoSeleccionado) {
-    alert('Primero selecciona un curso.')
+  if (!nivel) {
+    alert('Primero selecciona un nivel.')
     return
   }
 
-  if (!paraleloSeleccionado) {
-    alert('Primero selecciona un paralelo.')
+  if (!cursoSeleccionado) {
+    await generarCredenciales({ nivel })
     return
   }
 
@@ -5323,45 +5982,237 @@ async function generarCredencialesGrupo() {
   await generarCredenciales({
     nivel: datos.nivel,
     curso: datos.curso,
-    paralelo: paraleloSeleccionado
+    ...(paraleloSeleccionado ? { paralelo: paraleloSeleccionado } : {})
   })
 }
 
 async function generarCredenciales(filtros = null) {
-  if (!filtros) {
-    alert('Selecciona un curso y paralelo para generar las credenciales.')
-    return
-  }
+  let progreso = null
+
   try {
     const resultado = await getDocs(collection(db, 'estudiantes'))
 
+    const normalizar = valor =>
+      String(valor ?? '').trim().toLocaleLowerCase()
+
     const estudiantes = resultado.docs
-  .map(documento => ({
-    id: documento.id,
-    ...documento.data()
-  }))
-  .filter(estudiante =>
-  estudiante.qr_id &&
-  estudiante.activo !== false &&
-  (
-    !filtros ||
-    (
-      estudiante.nivel?.trim() === filtros.nivel &&
-      estudiante.curso?.trim() === filtros.curso &&
-      estudiante.paralelo?.trim() === filtros.paralelo
-    )
-  )
-)
+      .map(documento => ({
+        id: documento.id,
+        ...documento.data()
+      }))
+      .filter(estudiante => {
+        if (!estudiante.qr_id || estudiante.activo === false) return false
+        if (!filtros) return true
+
+        if (filtros.nivel &&
+          normalizar(estudiante.nivel) !== normalizar(filtros.nivel)) return false
+
+        if (filtros.curso &&
+          normalizar(estudiante.curso) !== normalizar(filtros.curso)) return false
+
+        if (filtros.paralelo &&
+          normalizar(estudiante.paralelo) !== normalizar(filtros.paralelo)) return false
+
+        return true
+      })
+
     if (estudiantes.length === 0) {
-      alert('No hay estudiantes activos con identificador QR.')
+      alert('No hay estudiantes activos con identificador QR para esta selección.')
       return
     }
 
-    const confirmar = confirm(
-      `Se generarán ${estudiantes.length} credenciales en PDF. ¿Deseas continuar?`
-    )
+    // ORDEN DE NIVELES
+    const ordenNivel = {
+      inicial: 1,
+      primaria: 2,
+      secundaria: 3
+    }
 
-    if (!confirmar) return
+    // ORDEN DE CURSOS
+    const ordenOrdinal = {
+      'primera': 1,
+      'primero': 1,
+      'primer': 1,
+      '1ro': 1,
+      '1ro.': 1,
+      'segunda': 2,
+      'segundo': 2,
+      '2do': 2,
+      '2do.': 2,
+      'tercera': 3,
+      'tercero': 3,
+      '3ro': 3,
+      '3ro.': 3,
+      'cuarta': 4,
+      'cuarto': 4,
+      '4to': 4,
+      '4to.': 4,
+      'quinta': 5,
+      'quinto': 5,
+      '5to': 5,
+      '5to.': 5,
+      'sexta': 6,
+      'sexto': 6,
+      '6to': 6,
+      '6to.': 6
+    }
+
+    const obtenerOrdenCurso = curso => {
+      const texto = normalizar(curso)
+
+      for (const [palabra, numero] of Object.entries(ordenOrdinal)) {
+        const expresion = new RegExp(
+          `(^|\\s)${palabra.replace('.', '\\.')}(?=\\s|$)`
+        )
+
+        if (expresion.test(texto)) return numero
+      }
+
+      return 99
+    }
+
+   
+// ORDENAR TODO EL LISTADO
+estudiantes.sort((a, b) => {
+  // 1. NIVEL: Inicial, Primaria, Secundaria
+  const nivelA = ordenNivel[normalizar(a.nivel)] ?? 99
+  const nivelB = ordenNivel[normalizar(b.nivel)] ?? 99
+
+  if (nivelA !== nivelB) return nivelA - nivelB
+
+  // 2. CURSO: orden académico
+  const cursoA = obtenerOrdenCurso(a.curso)
+  const cursoB = obtenerOrdenCurso(b.curso)
+
+  if (cursoA !== cursoB) return cursoA - cursoB
+
+  // Si tienen el mismo número de orden, comparar el nombre
+  const comparacionCurso = String(a.curso || '').localeCompare(
+    String(b.curso || ''),
+    'es',
+    { numeric: true, sensitivity: 'base' }
+  )
+
+  if (comparacionCurso !== 0) return comparacionCurso
+
+  // 3. PARALELO: A, B, C, D...
+  const paraleloA = normalizar(a.paralelo)
+  const paraleloB = normalizar(b.paralelo)
+
+  if (paraleloA !== paraleloB) {
+    if (!paraleloA) return 1
+    if (!paraleloB) return -1
+
+    return paraleloA.localeCompare(paraleloB, 'es', {
+      numeric: true,
+      sensitivity: 'base'
+    })
+  }
+
+  // 4. APELLIDOS: A a Z
+  const apellidoA = normalizar(a.apellidos)
+  const apellidoB = normalizar(b.apellidos)
+
+  const comparacionApellido = apellidoA.localeCompare(
+    apellidoB,
+    'es',
+    { sensitivity: 'base' }
+  )
+
+  if (comparacionApellido !== 0) return comparacionApellido
+
+  // 5. NOMBRES: A a Z
+  return normalizar(a.nombres).localeCompare(
+    normalizar(b.nombres),
+    'es',
+    { sensitivity: 'base' }
+  )
+})
+
+    const TAMANO_BLOQUE = filtros
+  ? Math.max(estudiantes.length, 1)
+  : 250
+
+const totalArchivos = filtros
+  ? 1
+  : Math.ceil(estudiantes.length / TAMANO_BLOQUE)
+
+    const descripcion = !filtros
+      ? 'de TODOS los estudiantes'
+      : [filtros.nivel, filtros.curso, filtros.paralelo].filter(Boolean).join(' / ')
+
+    if (!confirm(
+      `Se generarán ${estudiantes.length} credenciales ${descripcion}.\n\n` +
+      `Se crearán ${totalArchivos} archivos PDF de hasta ${TAMANO_BLOQUE} estudiantes cada uno.\n\n` +
+      `Los estudiantes estarán ordenados por nivel, curso y paralelo.\n\n¿Deseas continuar?`
+    )) return
+
+    progreso = document.createElement('div')
+
+    progreso.style.cssText = `
+      position:fixed;
+      inset:0;
+      z-index:999999;
+      background:rgba(25,15,40,.78);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      font-family:Arial,sans-serif;
+    `
+
+    progreso.innerHTML = `
+      <div style="
+        background:white;
+        width:100%;
+        max-width:420px;
+        padding:28px;
+        border-radius:18px;
+        box-shadow:0 15px 50px rgba(0,0,0,.25);
+        text-align:center;
+      ">
+        <div style="font-size:18px;font-weight:bold;color:#382052;margin-bottom:10px;">
+          GENERANDO CREDENCIALES
+        </div>
+        <div id="credenciales-progreso-texto"
+          style="font-size:14px;color:#666;margin-bottom:18px;">
+          Preparando...
+        </div>
+        <div style="width:100%;height:13px;background:#eee7f5;border-radius:20px;overflow:hidden;">
+          <div id="credenciales-progreso-barra"
+            style="width:0%;height:100%;background:linear-gradient(90deg,#7045a5,#f39a45);border-radius:20px;">
+          </div>
+        </div>
+        <div id="credenciales-progreso-porcentaje"
+          style="font-size:25px;font-weight:bold;color:#7045a5;margin-top:15px;">
+          0%
+        </div>
+        <div style="font-size:12px;color:#888;margin-top:8px;">
+          No cierres esta ventana mientras se generan los archivos.
+        </div>
+      </div>
+    `
+
+    document.body.appendChild(progreso)
+
+    const textoProgreso = progreso.querySelector('#credenciales-progreso-texto')
+    const barraProgreso = progreso.querySelector('#credenciales-progreso-barra')
+    const porcentajeProgreso = progreso.querySelector('#credenciales-progreso-porcentaje')
+
+    const actualizarProgreso = (procesados, mensaje) => {
+      const porcentaje = Math.round(
+        (procesados / estudiantes.length) * 100
+      )
+
+      textoProgreso.textContent =
+        `${mensaje} ${procesados} de ${estudiantes.length} estudiantes`
+
+      barraProgreso.style.width = `${porcentaje}%`
+      porcentajeProgreso.textContent = `${porcentaje}%`
+    }
+
+    const cederPantalla = () =>
+      new Promise(resolve => requestAnimationFrame(resolve))
 
     const cargarImagen = async ruta => {
       const respuesta = await fetch(ruta)
@@ -5379,91 +6230,134 @@ async function generarCredenciales(filtros = null) {
         lector.readAsDataURL(blob)
       })
     }
-const frente = await cargarImagen('/anverso.png')
-const reverso = await cargarImagen('/reverso.png')
 
-const pdf = new jsPDF({
-  orientation: 'landscape',
-  unit: 'mm',
-  format: 'letter'
-})
+    const frente = await cargarImagen('/anverso.png')
+    const reverso = await cargarImagen('/reverso.png')
 
-// MEDIDAS EXACTAS: 10,40 x 6,70 CM
-const ancho = 104
-const alto = 67
+    const ancho = 104
+    const alto = 67
 
-// SEIS CREDENCIALES POR HOJA
-const posiciones = [
-  [34.7, 5.45],
-  [140.7, 5.45],
-  [34.7, 74.45],
-  [140.7, 74.45],
-  [34.7, 143.45],
-  [140.7, 143.45]
-]
+    const posiciones = [
+      [34.7, 5.45],
+      [140.7, 5.45],
+      [34.7, 74.45],
+      [140.7, 74.45],
+      [34.7, 143.45],
+      [140.7, 143.45]
+    ]
 
-// GENERAR CREDENCIALES EN GRUPOS DE 6
-for (let inicio = 0; inicio < estudiantes.length; inicio += 6) {
+    let procesados = 0
 
-  const grupo = estudiantes.slice(inicio, inicio + 6)
+    for (
+      let numeroArchivo = 0;
+      numeroArchivo < totalArchivos;
+      numeroArchivo++
+    ) {
+      const inicioBloque = numeroArchivo * TAMANO_BLOQUE
 
-  // ==========================================
-  // PÁGINA DEL ANVERSO
-  // ==========================================
+      const grupoEstudiantes = estudiantes.slice(
+        inicioBloque,
+        inicioBloque + TAMANO_BLOQUE
+      )
 
-  if (inicio > 0) {
-    pdf.addPage('letter', 'landscape')
-  }
+      textoProgreso.textContent =
+        `Preparando archivo ${numeroArchivo + 1} de ${totalArchivos}...`
 
-  for (let i = 0; i < grupo.length; i++) {
+      await cederPantalla()
 
-    const estudiante = grupo[i]
-    const [x, y] = posiciones[i]
+      let pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'letter',
+        compress: true
+      })
 
-    // FONDO ANVERSO
-    pdf.addImage(
-      frente,
-      'PNG',
-      x,
-      y,
-      ancho,
-      alto
-    )
+      for (
+        let inicio = 0;
+        inicio < grupoEstudiantes.length;
+        inicio += 6
+      ) {
+        const grupo = grupoEstudiantes.slice(inicio, inicio + 6)
+        const codigosQR = []
 
+        // GENERAR QR
+        for (let i = 0; i < grupo.length; i++) {
+          textoProgreso.textContent =
+            `Archivo ${numeroArchivo + 1}/${totalArchivos}: preparando QR`
 
- // NOMBRES
+          const qr = await QRCode.toDataURL(grupo[i].qr_id, {
+            width: 500,
+            margin: 2,
+            errorCorrectionLevel: 'H'
+          })
+
+          codigosQR.push(qr)
+          await cederPantalla()
+        }
+
+        // ANVERSO
+        if (inicio > 0) {
+          pdf.addPage('letter', 'landscape')
+        }
+
+        for (let i = 0; i < grupo.length; i++) {
+          const estudiante = grupo[i]
+          const [x, y] = posiciones[i]
+
+          pdf.addImage(frente, 'PNG', x, y, ancho, alto)
+
+          
 const nombres = (estudiante.nombres || '').toUpperCase()
 const apellidos = (estudiante.apellidos || '').toUpperCase()
 
+// NOMBRES: ajustar tamaño para que siempre ocupen una sola línea
 pdf.setFont('helvetica', 'bold')
-pdf.setFontSize(14)
-pdf.setTextColor(255, 255, 255)
 
+let tamanoNombres = 14
+pdf.setFontSize(tamanoNombres)
+
+while (
+  pdf.getTextWidth(nombres) > 51 &&
+  tamanoNombres > 8
+) {
+  tamanoNombres -= 0.5
+  pdf.setFontSize(tamanoNombres)
+}
+
+pdf.setTextColor(7, 55, 99)
 pdf.text(nombres, x + 72, y + 35, {
-  align: 'center',
-  maxWidth: 51
+  align: 'center'
 })
 
-// APELLIDOS
+// APELLIDOS: ajustar tamaño para evitar superposición
 pdf.setFont('helvetica', 'normal')
-pdf.setFontSize(10)
-pdf.setTextColor(55, 55, 55)
 
-pdf.text(apellidos, x + 72, y + 42, {
-  align: 'center',
-  maxWidth: 51
+let tamanoApellidos = 10
+pdf.setFontSize(tamanoApellidos)
+
+while (
+  pdf.getTextWidth(apellidos) > 51 &&
+  tamanoApellidos > 8
+) {
+  tamanoApellidos -= 0.5
+  pdf.setFontSize(tamanoApellidos)
+}
+
+pdf.setTextColor(23, 61, 91)
+pdf.text(apellidos, x + 72, y + 43, {
+  align: 'center'
 })
 
 // CURSO Y PARALELO
-const curso = (
+const curso =
   `${estudiante.curso || ''} ${estudiante.paralelo || ''}`
-).trim().toUpperCase()
+    .trim()
+    .toUpperCase()
 
 pdf.setFont('helvetica', 'bold')
 pdf.setFontSize(9)
-pdf.setTextColor(255, 193, 7)
-
-pdf.text(curso, x + 72, y + 49, {
+pdf.setTextColor(185, 120, 0)
+pdf.text(curso, x + 72, y + 50, {
   align: 'center',
   maxWidth: 51
 })
@@ -5471,99 +6365,85 @@ pdf.text(curso, x + 72, y + 49, {
 // CÓDIGO
 pdf.setFont('helvetica', 'normal')
 pdf.setFontSize(8)
-pdf.setTextColor(255, 255, 255)
+pdf.setTextColor(23, 61, 91)
+pdf.text(`CÓDIGO: ${estudiante.codigo || ''}`, x + 72, y + 56, {
+  align: 'center'
+})
 
-pdf.text(
-  `CÓDIGO: ${estudiante.codigo || ''}`,
-  x + 72,
-  y + 55,
-  { align: 'center' }
-)
-    // QR DEL ANVERSO
-    const qr = await QRCode.toDataURL(
-      estudiante.qr_id,
-      {
-        width: 500,
-        margin: 2,
-        errorCorrectionLevel: 'H'
+// QR
+pdf.addImage(codigosQR[i], 'PNG', x + 81, y + 7, 20, 20)
+
+          await cederPantalla()
+        }
+
+        // REVERSO
+        pdf.addPage('letter', 'landscape')
+
+        for (let i = 0; i < grupo.length; i++) {
+          const [x, y] = posiciones[i]
+
+          pdf.addImage(reverso, 'PNG', x, y, ancho, alto)
+
+          pdf.roundedRect(x + 44, y + 44, 15, 15, 1, 1, 'F')
+          pdf.addImage(codigosQR[i], 'PNG', x + 44, y + 44, 15, 15)
+
+          procesados++
+
+          actualizarProgreso(
+            procesados,
+            `Archivo ${numeroArchivo + 1}/${totalArchivos}: completando`
+          )
+
+          await cederPantalla()
+        }
       }
+
+      // DESCARGAR CADA ARCHIVO
+      const numero = String(numeroArchivo + 1).padStart(2, '0')
+
+      const nombreBase = filtros
+        ? 'credenciales-shalom-seleccion'
+        : 'credenciales-completas-shalom'
+
+      textoProgreso.textContent =
+        `Guardando archivo ${numeroArchivo + 1} de ${totalArchivos}...`
+
+      await cederPantalla()
+
+      pdf.save(`${nombreBase}-${numero}.pdf`)
+
+      // Liberar la referencia del documento y dar tiempo a la descarga
+      pdf = null
+
+      await new Promise(resolve => setTimeout(resolve, 1500))
+    }
+
+    barraProgreso.style.width = '100%'
+    porcentajeProgreso.textContent = '100%'
+    textoProgreso.textContent = '¡Todos los archivos fueron generados!'
+
+    await cederPantalla()
+
+    alert(
+      `¡Credenciales generadas correctamente!\n\n` +
+      `Estudiantes: ${estudiantes.length}\n` +
+      `Archivos PDF: ${totalArchivos}\n` +
+      `Máximo por archivo: ${TAMANO_BLOQUE} estudiantes.\n\n` +
+      `Revisa tu carpeta de descargas.`
     )
 
-    pdf.addImage(
-      qr,
-      'PNG',
-      x + 81,
-      y + 7,
-      20,
-      20
-    )
-  }
-
-  // ==========================================
-  // PÁGINA DEL REVERSO
-  // ==========================================
-
-  pdf.addPage('letter', 'landscape')
-
-  for (let i = 0; i < grupo.length; i++) {
-
-    const estudiante = grupo[i]
-    const [x, y] = posiciones[i]
-
-    // FONDO COMPLETO DEL REVERSO
-    pdf.addImage(
-      reverso,
-      'PNG',
-      x,
-      y,
-      ancho,
-      alto
-    )
-
-    // MISMO QR DEL ESTUDIANTE
-    const qr = await QRCode.toDataURL(
-      estudiante.qr_id,
-      {
-        width: 500,
-        margin: 2,
-        errorCorrectionLevel: 'H'
-      }
-    )
-  
-// FONDO BLANCO
-pdf.roundedRect(
-  x + 44,
-  y + 44,
-  15,
-  15,
-  1,
-  1,
-  'F'
-)
-
-// QR TRASERO
-pdf.addImage(
-  qr,
-  'PNG',
-  x + 44,
-  y + 44,
-  15,
-  15
-)
-  }
-}
-
-// DESCARGAR PDF
-pdf.save('credenciales-completas-shalom.pdf')
-
-alert(
-  `¡Credenciales generadas!\n` +
-  `Total: ${estudiantes.length}\n` +
-  `Hojas de impresión: ${Math.ceil(estudiantes.length / 6)} por cada cara.`
-)
   } catch (error) {
     console.error('Error al generar credenciales:', error)
-    alert('No se pudo generar el PDF. Revisa la consola.')
+
+    alert(
+      'No se pudieron generar todas las credenciales.\n\n' +
+      'Revisa la consola para identificar el error.'
+    )
+
+  } finally {
+    if (progreso && progreso.parentNode) {
+      progreso.parentNode.removeChild(progreso)
+    }
   }
 }
 
@@ -5948,186 +6828,211 @@ async function mostrarEstudiantes() {
       <!-- HERRAMIENTAS -->
       <section class="est-herramientas">
 
-        <article class="est-card est-herramienta">
-          <div class="est-card-encabezado">
-            <div class="est-numero est-numero-naranja">02</div>
-            <div>
-              <h2>Importación desde Excel</h2>
-              <p>Prepara la carga masiva de estudiantes desde una hoja de cálculo.</p>
-            </div>
-          </div>
-
-          <div class="est-archivo">
-            <label for="archivo-excel">Seleccionar archivo Excel</label>
-            <input type="file" id="archivo-excel" accept=".xlsx,.xls">
-            <span>Formatos permitidos: .xlsx y .xls</span>
-          </div>
-
-          <button type="button" id="previsualizar-excel" class="est-btn est-btn-secundario">
-            REVISAR ARCHIVO
-          </button>
-
-          <p id="mensaje-excel" role="status"></p>
-          <div id="vista-excel" class="tabla-scroll est-vista-excel"></div>
-        </article>
-
-        <article class="est-card est-herramienta">
-          <div class="est-card-encabezado">
-            <div class="est-numero est-numero-azul">03</div>
-            <div>
-              <h2>Credenciales por curso</h2>
-              <p>Genera archivos PDF independientes para cada grupo.</p>
-            </div>
-          </div>
-
-          <div class="est-campos est-campos-dos">
-            <div class="est-campo">
-              <label for="filtro-curso">Curso</label>
-              <select id="filtro-curso">
-                <option value="">Cargando cursos...</option>
-              </select>
-            </div>
-
-            <div class="est-campo">
-              <label for="filtro-paralelo">Paralelo</label>
-              <select id="filtro-paralelo">
-                <option value="">Seleccionar paralelo</option>
-              </select>
-            </div>
-          </div>
-
-          <button type="button" id="generar-credenciales-grupo" class="est-btn est-btn-primario">
-            GENERAR PDF DEL GRUPO
-          </button>
-
-          <p id="mensaje-credenciales" role="status"></p>
-        </article>
-      </section>
-
-      <!-- DIRECTORIO -->
-      <section class="est-card est-directorio">
-        <div class="est-card-encabezado est-directorio-encabezado">
-          <div class="est-numero est-numero-verde">04</div>
-          <div>
-            <h2>Directorio de estudiantes</h2>
-            <p>Consulta, filtra y administra los registros institucionales.</p>
-          </div>
-        </div>
-
-        <div class="est-filtros">
-          <div class="est-buscador">
-            <label for="buscar-estudiante">BUSCAR ESTUDIANTE</label>
-            <input
-              type="text"
-              id="buscar-estudiante"
-              placeholder="Nombre, apellido o código..."
-            >
-          </div>
-
-          <div class="est-campo">
-            <label for="filtro-nivel-estudiantes">NIVEL</label>
-            <select id="filtro-nivel-estudiantes">
-              <option value="">Todos los niveles</option>
-            </select>
-          </div>
-
-          <div class="est-campo">
-            <label for="filtro-curso-estudiantes">CURSO</label>
-            <select id="filtro-curso-estudiantes">
-              <option value="">Todos los cursos</option>
-            </select>
-          </div>
-
-          <div class="est-campo">
-            <label for="filtro-paralelo-estudiantes">PARALELO</label>
-            <select id="filtro-paralelo-estudiantes">
-              <option value="">Todos los paralelos</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- ACCIONES -->
-        <div class="est-acciones">
-          <div class="est-acciones-grupo">
-            <button id="actualizar-estudiantes" class="est-btn est-btn-secundario">
-              ↻ Actualizar
-            </button>
-            <button type="button" id="generar-qr-estudiantes" class="est-btn est-btn-secundario">
-              GENERAR QR PARA TODOS
-            </button>
-            <button type="button" id="generar-credenciales" class="est-btn est-btn-secundario">
-              GENERAR CREDENCIALES
-            </button>
-            <button type="button" id="respaldo-estudiantes" class="est-btn est-btn-secundario">
-              DESCARGAR RESPALDO
-            </button>
-          </div>
-
-          <button type="button" id="limpiar-estudiantes" class="est-btn est-btn-peligro">
-            ELIMINAR TODOS
-          </button>
-        </div>
-
-        <!-- TABLA -->
-        <div class="est-tabla-contenedor">
-          <table class="est-tabla">
-            <thead>
-              <tr>
-                <th>CÓDIGO</th>
-                <th>ESTUDIANTE</th>
-                <th>NIVEL</th>
-                <th>CURSO</th>
-                <th>PARALELO</th>
-                <th>ESTADO</th>
-              </tr>
-            </thead>
-            <tbody id="lista-estudiantes">
-              <tr><td colspan="6">Cargando estudiantes...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <footer class="est-pie">
-        SHALOM EXPO 2026 · SISTEMA DE GESTIÓN INSTITUCIONAL
-      </footer>
-
+  <!-- IMPORTACIÓN DESDE EXCEL -->
+  <article class="est-card est-herramienta">
+    <div class="est-card-encabezado">
+      <div class="est-numero est-numero-naranja">02</div>
+      <div>
+        <h2>Importación desde Excel</h2>
+        <p>Prepara la carga masiva de estudiantes desde una hoja de cálculo.</p>
+      </div>
     </div>
-  `;
 
-  document.querySelector('#volver-inicio').addEventListener('click', () => {
-    mostrarPanel(administrador.nombre || 'Administrador');
-  });
+    <div class="est-archivo">
+      <label for="archivo-excel">Seleccionar archivo Excel</label>
+      <input type="file" id="archivo-excel" accept=".xlsx,.xls">
+      <span>Formatos permitidos: .xlsx y .xls</span>
+    </div>
 
-  document.querySelector('#actualizar-estudiantes')
-    .addEventListener('click', cargarEstudiantes);
+    <button type="button" id="previsualizar-excel" class="est-btn est-btn-secundario">
+      REVISAR ARCHIVO
+    </button>
 
-  document.querySelector('#respaldo-estudiantes')
-    .addEventListener('click', descargarCopiaEstudiantes);
+    <p id="mensaje-excel" role="status"></p>
+    <div id="vista-excel" class="tabla-scroll est-vista-excel"></div>
+  </article>
 
-  document.querySelector('#generar-qr-estudiantes')
-    .addEventListener('click', generarQRParaEstudiantesExistentes);
+  <!-- GENERACIÓN DE CREDENCIALES -->
+  <article class="est-card est-herramienta">
+    <div class="est-card-encabezado">
+      <div class="est-numero est-numero-azul">03</div>
+      <div>
+        <h2>Generación de credenciales</h2>
+        <p>Genera archivos PDF de todos los estudiantes o selecciona nivel, curso y paralelo.</p>
+      </div>
+    </div>
 
-  document.querySelector('#generar-credenciales')
-    .addEventListener('click', () => generarCredenciales());
+    <div class="est-campos">
+      <div class="est-campo">
+        <label for="filtro-nivel-credenciales">NIVEL EDUCATIVO</label>
+        <select id="filtro-nivel-credenciales">
+          <option value="">Seleccionar nivel</option>
+        </select>
+      </div>
 
-  document.querySelector('#limpiar-estudiantes')
-    .addEventListener('click', eliminarTodosEstudiantes);
+      <div class="est-campo">
+        <label for="filtro-curso">CURSO</label>
+        <select id="filtro-curso" disabled>
+          <option value="">Primero selecciona un nivel</option>
+        </select>
+      </div>
 
-  document.querySelector('#previsualizar-excel')
-    .addEventListener('click', revisarExcel);
+      <div class="est-campo">
+        <label for="filtro-paralelo">PARALELO</label>
+        <select id="filtro-paralelo" disabled>
+          <option value="">Todos los paralelos</option>
+        </select>
+      </div>
+    </div>
 
-  document.querySelector('#form-estudiante')
-    .addEventListener('submit', guardarEstudiante);
+    <button
+      type="button"
+      id="generar-credenciales-grupo"
+      class="est-btn est-btn-primario"
+    >
+      GENERAR PDF DE LA SELECCIÓN
+    </button>
 
-  document.querySelector('#filtro-curso')
-    .addEventListener('change', cargarParalelosCredenciales);
+    <p id="mensaje-credenciales" role="status"></p>
+  </article>
 
-  document.querySelector('#generar-credenciales-grupo')
-    .addEventListener('click', generarCredencialesGrupo);
+</section>
 
-  await cargarOpcionesCredenciales();
-  await cargarEstudiantes();
+<!-- DIRECTORIO -->
+<section class="est-card est-directorio">
+  <div class="est-card-encabezado est-directorio-encabezado">
+    <div class="est-numero est-numero-verde">04</div>
+    <div>
+      <h2>Directorio de estudiantes</h2>
+      <p>Consulta, filtra y administra los registros institucionales.</p>
+    </div>
+  </div>
+
+  <div class="est-filtros">
+    <div class="est-buscador">
+      <label for="buscar-estudiante">BUSCAR ESTUDIANTE</label>
+      <input
+        type="text"
+        id="buscar-estudiante"
+        placeholder="Nombre, apellido o código..."
+      >
+    </div>
+
+    <div class="est-campo">
+      <label for="filtro-nivel-estudiantes">NIVEL</label>
+      <select id="filtro-nivel-estudiantes">
+        <option value="">Todos los niveles</option>
+      </select>
+    </div>
+
+    <div class="est-campo">
+      <label for="filtro-curso-estudiantes">CURSO</label>
+      <select id="filtro-curso-estudiantes">
+        <option value="">Todos los cursos</option>
+      </select>
+    </div>
+
+    <div class="est-campo">
+      <label for="filtro-paralelo-estudiantes">PARALELO</label>
+      <select id="filtro-paralelo-estudiantes">
+        <option value="">Todos los paralelos</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ACCIONES -->
+  <div class="est-acciones">
+    <div class="est-acciones-grupo">
+      <button id="actualizar-estudiantes" class="est-btn est-btn-secundario">
+        ↻ Actualizar
+      </button>
+
+      <button type="button" id="generar-qr-estudiantes" class="est-btn est-btn-secundario">
+        GENERAR QR PARA TODOS
+      </button>
+
+      <button type="button" id="generar-credenciales" class="est-btn est-btn-secundario">
+        GENERAR CREDENCIALES
+      </button>
+
+      <button type="button" id="respaldo-estudiantes" class="est-btn est-btn-secundario">
+        DESCARGAR RESPALDO
+      </button>
+    </div>
+
+    <button type="button" id="limpiar-estudiantes" class="est-btn est-btn-peligro">
+      ELIMINAR TODOS
+    </button>
+  </div>
+
+  <!-- TABLA -->
+  <div class="est-tabla-contenedor">
+    <table class="est-tabla">
+      <thead>
+        <tr>
+          <th>CÓDIGO</th>
+          <th>ESTUDIANTE</th>
+          <th>NIVEL</th>
+          <th>CURSO</th>
+          <th>PARALELO</th>
+          <th>ESTADO</th>
+        </tr>
+      </thead>
+
+      <tbody id="lista-estudiantes">
+        <tr>
+          <td colspan="6">Cargando estudiantes...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="est-pie">
+  SHALOM EXPO 2026 · SISTEMA DE GESTIÓN INSTITUCIONAL
+</footer>
+
+</div>
+`;
+  
+document.querySelector('#volver-inicio').addEventListener('click', () => {
+  mostrarPanel(administrador.nombre || 'Administrador')
+})
+
+document.querySelector('#actualizar-estudiantes')
+  .addEventListener('click', cargarEstudiantes)
+
+document.querySelector('#respaldo-estudiantes')
+  .addEventListener('click', descargarCopiaEstudiantes)
+
+document.querySelector('#generar-qr-estudiantes')
+  .addEventListener('click', generarQRParaEstudiantesExistentes)
+
+document.querySelector('#generar-credenciales')
+  .addEventListener('click', () => generarCredenciales())
+
+document.querySelector('#limpiar-estudiantes')
+  .addEventListener('click', eliminarTodosEstudiantes)
+
+document.querySelector('#previsualizar-excel')
+  .addEventListener('click', revisarExcel)
+
+document.querySelector('#form-estudiante')
+  .addEventListener('submit', guardarEstudiante)
+
+// FILTROS DE CREDENCIALES
+document.querySelector('#filtro-nivel-credenciales')
+  .addEventListener('change', cargarCursosCredenciales)
+
+document.querySelector('#filtro-curso')
+  .addEventListener('change', cargarParalelosCredenciales)
+
+document.querySelector('#generar-credenciales-grupo')
+  .addEventListener('click', generarCredencialesGrupo)
+
+// CARGAR INFORMACIÓN
+await cargarOpcionesCredenciales()
+await cargarEstudiantes()
 }
 
 async function eliminarEstudiante(id, codigo) {
@@ -11001,6 +11906,7 @@ async function mostrarSeleccionVisitante(proyecto) {
 // ESCÁNER DE ASISTENCIA PARA PERSONAL STAFF
 // =====================================================
 
+
 async function mostrarEscanerAsistenciaStaff() {
 
   if (!staffActual) {
@@ -11020,7 +11926,7 @@ async function mostrarEscanerAsistenciaStaff() {
 
           <p class="jurado-evento">CONTROL DE ASISTENCIA</p>
           <h1>SHALOM EXPO <span>2026</span></h1>
-          <p class="jurado-subtitulo">Registro de estudiantes</p>
+          <p class="jurado-subtitulo">Registro continuo de estudiantes</p>
         </header>
 
         <div class="jurado-separador"></div>
@@ -11031,8 +11937,8 @@ async function mostrarEscanerAsistenciaStaff() {
             <span class="jurado-paso">PERSONAL STAFF</span>
             <h2>Escanear credencial</h2>
             <p>
-              Enfoca el código QR de la credencial
-              del estudiante para registrar su asistencia.
+              Enfoca el código QR de cada estudiante.
+              La cámara continuará activa después de cada lectura.
             </p>
             <h3>${escapar(staffActual.nombreCompleto)}</h3>
           </div>
@@ -11064,11 +11970,20 @@ async function mostrarEscanerAsistenciaStaff() {
 
   let lectorQRStaff = null
   let procesandoQRStaff = false
+  let ultimoQRStaff = ''
+  let ultimaLecturaStaff = 0
 
   async function detenerLectorStaff() {
-    if (lectorQRStaff && lectorQRStaff.isScanning) {
-      await lectorQRStaff.stop()
-      await lectorQRStaff.clear()
+    if (lectorQRStaff) {
+      try {
+        if (lectorQRStaff.isScanning) {
+          await lectorQRStaff.stop()
+        }
+
+        await lectorQRStaff.clear()
+      } catch (error) {
+        console.warn('No se pudo detener el lector STAFF:', error)
+      }
     }
 
     lectorQRStaff = null
@@ -11096,6 +12011,17 @@ async function mostrarEscanerAsistenciaStaff() {
 
         if (procesandoQRStaff) return
 
+        const momentoLectura = Date.now()
+
+        if (
+          textoQR === ultimoQRStaff &&
+          momentoLectura - ultimaLecturaStaff < 3000
+        ) {
+          return
+        }
+
+        ultimoQRStaff = textoQR
+        ultimaLecturaStaff = momentoLectura
         procesandoQRStaff = true
 
         const resultadoQR = document.querySelector(
@@ -11103,6 +12029,9 @@ async function mostrarEscanerAsistenciaStaff() {
         )
 
         try {
+
+          resultadoQR.innerHTML =
+            '<p>PROCESANDO ASISTENCIA...</p>'
 
           const consulta = query(
             collection(db, 'estudiantes'),
@@ -11116,7 +12045,6 @@ async function mostrarEscanerAsistenciaStaff() {
             resultadoQR.innerHTML =
               '<h3>ESTUDIANTE NO ENCONTRADO</h3>'
 
-            procesandoQRStaff = false
             return
           }
 
@@ -11127,7 +12055,6 @@ async function mostrarEscanerAsistenciaStaff() {
             resultadoQR.innerHTML =
               '<h3>ESTUDIANTE INACTIVO</h3>'
 
-            procesandoQRStaff = false
             return
           }
 
@@ -11149,8 +12076,6 @@ async function mostrarEscanerAsistenciaStaff() {
 
           const asistenciaExistente = await getDoc(asistenciaRef)
 
-          await detenerLectorStaff()
-
           if (asistenciaExistente.exists()) {
 
             resultadoQR.innerHTML = `
@@ -11167,6 +12092,8 @@ async function mostrarEscanerAsistenciaStaff() {
                 Primera entrada:
                 ${escapar(asistenciaExistente.data().hora || '')}
               </p>
+
+              <p>El lector continúa activo para el siguiente estudiante.</p>
             `
 
             return
@@ -11225,6 +12152,11 @@ async function mostrarEscanerAsistenciaStaff() {
 
               <span class="estado">● PRESENTE</span>
 
+              <p>
+                <strong>LECTOR ACTIVO:</strong>
+                Puedes escanear al siguiente estudiante.
+              </p>
+
             </div>
           `
 
@@ -11237,10 +12169,6 @@ async function mostrarEscanerAsistenciaStaff() {
 
           resultadoQR.textContent =
             'No se pudo registrar la asistencia. Verifica los permisos de Firebase.'
-
-          if (lectorQRStaff && lectorQRStaff.isScanning) {
-            procesandoQRStaff = false
-          }
 
         } finally {
           procesandoQRStaff = false

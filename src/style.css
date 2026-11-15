@@ -5922,3 +5922,7 @@ canvas {
     min-width: 850px;
   }
 }
+/* Ocultar controles manuales cuando se evalúa desde QR de proyecto */
+.eval-tarjeta.eval-oculto-qr {
+  display: none !important;
+}
